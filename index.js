@@ -23,7 +23,7 @@ connectDB();
 
 // app.use(cors());
 app.use(cors({
-  origin: "http://localhost:5001", // allow only this origin
+  origin: "*", // allow only this origin
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"], // optional: specify allowed methods
   credentials: true // optional: allow cookies
 }));
