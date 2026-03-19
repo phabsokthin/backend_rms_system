@@ -28,6 +28,7 @@ app.use(cors({
   credentials: true // optional: allow cookies
 }));
 
+
 app.use(express.json());
 
 app.use("/uploads", express.static("uploads"));
