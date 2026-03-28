@@ -153,6 +153,72 @@ const getAllSalesOrders = async (req, res) => {
 };
 
 // ===============================
+// GET ALL SALES ORDERS PENDING
+// ===============================
+const getAllSalesOrdersPending = async (req, res) => {
+    try {
+        const salesOrders = await SalesOrder.find({ status: ["pending", "processing"] })
+            .populate("table_id")
+            .populate("staff_id")
+            .populate("customer_id")
+            .populate("payment_type_id")
+            .populate({
+                path: "items.product_id",
+                populate: { path: "category_id" }
+            })
+            .sort({ order_time: -1 });
+
+        res.status(200).json(salesOrders);
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to fetch sales orders",
+            error: error.message,
+        });
+    }
+};
+
+
+// ===============================
+// GET ALL SALES ORDERS Done
+// ===============================
+const getAllSalesOrdersDone = async (req, res) => {
+    try {
+        // Start of today
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        // End of today (optional but better)
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const salesOrders = await SalesOrder.find({
+            status: "done",
+            order_time: {
+                $gte: startOfDay,
+                $lte: endOfDay
+            }
+        })
+        .populate("table_id")
+        .populate("staff_id")
+        .populate("customer_id")
+        .populate("payment_type_id")
+        .populate({
+            path: "items.product_id",
+            populate: { path: "category_id" }
+        })
+        .sort({ order_time: -1 });
+
+        res.status(200).json(salesOrders);
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Failed to fetch sales orders",
+            error: error.message,
+        });
+    }
+};
+// ===============================
 // GET ALL SALES ORDERS By ID
 // ===============================
 
@@ -603,4 +669,4 @@ const updateSalesOrder = async (req, res) => {
 
 
 
-export { createSalesOrder, getAllSalesOrders, setSellOrderProcessing, setSellOrderDone, setSellOrderPaid, deleteSalesOrder, updateSalesOrder, getSalesOrderById };
+export { createSalesOrder, getAllSalesOrders, setSellOrderProcessing, setSellOrderDone, setSellOrderPaid, deleteSalesOrder, updateSalesOrder, getSalesOrderById, getAllSalesOrdersPending,getAllSalesOrdersDone};
