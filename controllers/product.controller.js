@@ -2,6 +2,7 @@
 import Product from "../models/Product.model.js";
 import fs from "fs";
 import path from "path";
+import cloudinary from "../config/cloudinary.js";
 
 // ===============================
 // CREATE PRODUCT
@@ -29,6 +30,17 @@ const createProduct = async (req, res) => {
       image_url = `/uploads/${req.file.filename}`;
     }
 
+    //store image in cloudinary
+    //     if (req.file) {
+    //   // Upload using the file path
+    //   const result = await cloudinary.uploader.upload(req.file.path, {
+    //     folder: 'products', // optional folder in Cloudinary
+    //     resource_type: 'image',
+    //   });
+
+    //   image_url = result.secure_url;
+    // }
+
     const product = await Product.create({
       name,
       category_id,
@@ -55,6 +67,7 @@ const createProduct = async (req, res) => {
     });
   }
 };
+
 
 // ===============================
 // GET ALL PRODUCT
