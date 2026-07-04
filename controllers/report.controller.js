@@ -9,7 +9,7 @@ const getProductsBelowAlertStock = async (req, res) => {
   try {
     const products = await Product.find({
       is_manage_stock: true,
-      $expr: { $lte: ["$qty", "$alert_stock"] } // qty <= alert_stock
+      $expr: { $lte: ["$qty", "$alert_stock"] }, // qty <= alert_stock
     })
       .populate("category_id", "name")
       .sort({ created_at: -1 });
@@ -25,8 +25,6 @@ const getProductsBelowAlertStock = async (req, res) => {
   }
 };
 
-
-
 // ===============================
 // GET ALL SALES ORDERS WITH REPORT (by currency)
 // ===============================
@@ -39,14 +37,20 @@ const getAllSalesOrders = async (req, res) => {
       .populate("payment_type_id")
       .populate({
         path: "items.product_id",
-        populate: { path: "category_id" }
+        populate: { path: "category_id" },
       })
       .sort({ order_time: -1 });
 
     // Overall totals
     const totalOrders = salesOrders.length;
-    const totalAmount = salesOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
-    const totalPayment = salesOrders.reduce((sum, order) => sum + Number(order.payment || 0), 0);
+    const totalAmount = salesOrders.reduce(
+      (sum, order) => sum + Number(order.total_amount || 0),
+      0,
+    );
+    const totalPayment = salesOrders.reduce(
+      (sum, order) => sum + Number(order.payment || 0),
+      0,
+    );
     const totalBalance = totalAmount - totalPayment;
 
     // Group by currency
@@ -63,7 +67,8 @@ const getAllSalesOrders = async (req, res) => {
       acc[currency].totalOrders += 1;
       acc[currency].totalAmount += Number(order.total_amount || 0);
       acc[currency].totalPayment += Number(order.payment || 0);
-      acc[currency].totalBalance = acc[currency].totalAmount - acc[currency].totalPayment;
+      acc[currency].totalBalance =
+        acc[currency].totalAmount - acc[currency].totalPayment;
       return acc;
     }, {});
 
@@ -87,8 +92,6 @@ const getAllSalesOrders = async (req, res) => {
     });
   }
 };
-
-
 
 // ===============================
 // GET PURCHASE REPORT BY CURRENCY
@@ -115,7 +118,7 @@ const getPurchaseReport = async (req, res) => {
       byCurrency: {},
     };
 
-    purchases.forEach(purchase => {
+    purchases.forEach((purchase) => {
       const { currency, total_amount, payment } = purchase;
 
       // Overall totals
@@ -146,11 +149,14 @@ const getPurchaseReport = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Failed to fetch purchase report", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Failed to fetch purchase report",
+        error: error.message,
+      });
   }
 };
-
-
 
 // ===============================
 // GET PROFIT AND LOSE
@@ -250,8 +256,6 @@ const getPurchaseReport = async (req, res) => {
 //   }
 // };
 
-
-
 const getProfitAndLoseReport = async (req, res) => {
   try {
     const { start, end } = req.query;
@@ -275,18 +279,18 @@ const getProfitAndLoseReport = async (req, res) => {
 
     const totalSales = sellOrders.reduce(
       (sum, order) => sum + (Number(order.payment) || 0),
-      0
+      0,
     );
     const totalExpenses = expenses.reduce(
       (sum, exp) => sum + (Number(exp.amount) || 0),
-      0
+      0,
     );
     const overallProfit = totalSales - totalExpenses;
     const overallLoss = overallProfit < 0 ? Math.abs(overallProfit) : 0;
 
     const reportByCurrency = {};
 
-    sellOrders.forEach(order => {
+    sellOrders.forEach((order) => {
       const cur = order.currency?.toLowerCase() || "usd";
       if (!reportByCurrency[cur]) {
         reportByCurrency[cur] = { sales: 0, expenses: 0, profit: 0, loss: 0 };
@@ -294,7 +298,7 @@ const getProfitAndLoseReport = async (req, res) => {
       reportByCurrency[cur].sales += Number(order.payment) || 0;
     });
 
-    expenses.forEach(exp => {
+    expenses.forEach((exp) => {
       const cur = exp.currency?.toLowerCase() || "usd";
       if (!reportByCurrency[cur]) {
         reportByCurrency[cur] = { sales: 0, expenses: 0, profit: 0, loss: 0 };
@@ -302,7 +306,7 @@ const getProfitAndLoseReport = async (req, res) => {
       reportByCurrency[cur].expenses += Number(exp.amount) || 0;
     });
 
-    Object.keys(reportByCurrency).forEach(cur => {
+    Object.keys(reportByCurrency).forEach((cur) => {
       const sales = reportByCurrency[cur].sales;
       const expensesTotal = reportByCurrency[cur].expenses;
       const profit = sales - expensesTotal;
@@ -320,7 +324,7 @@ const getProfitAndLoseReport = async (req, res) => {
       byCurrency: reportByCurrency,
     };
 
-    const customers = sellOrders.map(order => order.customer_id);
+    const customers = sellOrders.map((order) => order.customer_id);
 
     res.status(200).json({
       message: "Profit and loss report generated successfully",
@@ -331,7 +335,6 @@ const getProfitAndLoseReport = async (req, res) => {
         customers,
       },
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -351,73 +354,85 @@ const getTopSellingProducts = async (req, res) => {
 
     const topProducts = await SalesOrder.aggregate([
       { $unwind: "$items" },
-      { 
+      // Group by product
+      {
         $group: {
           _id: "$items.product_id",
-          totalSold: { $sum: "$items.qty" },
-          lastSoldAt: { $max: "$created_at" }
-        } 
+          totalSold: {
+            $sum: "$items.qty",
+          },
+          lastSoldAt: {
+            $max: "$created_at",
+          },
+          currency: {
+            $first: "$currency",
+          },
+        },
       },
       { $sort: { totalSold: -1 } },
-      { 
+      {
         $lookup: {
           from: "products",
           localField: "_id",
           foreignField: "_id",
-          as: "product"
-        } 
+          as: "product",
+        },
       },
       { $unwind: "$product" },
       { $match: { "product.is_manage_stock": true } },
 
       // lookup category
-      { 
+      {
         $lookup: {
           from: "categories",
           localField: "product.category_id",
           foreignField: "_id",
-          as: "category"
-        } 
+          as: "category",
+        },
       },
-      { 
-        $unwind: { path: "$category", preserveNullAndEmptyArrays: true } 
+      {
+        $unwind: { path: "$category", preserveNullAndEmptyArrays: true },
       },
 
       { $limit: limit },
 
-      { 
+      // Final response
+      {
         $project: {
           _id: 0,
           product_id: "$product._id",
           name: "$product.name",
+          code: "$product.code",
+          description: "$product.description",
           price: "$product.price",
-          image: "$product.image_url",
+          cost: "$product.cost",
+          profit: "$product.profit",
+          qty: "$product.qty",
           unit: "$product.unit",
+          image: "$product.image_url",
+          currency: "$currency",
           totalSold: 1,
           created_at: "$lastSoldAt",
           category: {
             id: "$category._id",
-            name: "$category.name"
-          }
-        } 
-      }
+            name: "$category.name",
+          },
+        },
+      },
     ]);
-
     res.status(200).json(topProducts);
-
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch top selling products",
-      error: error.message
+      error: error.message,
     });
   }
 };
-
 
 export {
   getProductsBelowAlertStock,
   getAllSalesOrders,
   getPurchaseReport,
   getProfitAndLoseReport,
-  getTopSellingProducts
-}
+  getTopSellingProducts,
+};
